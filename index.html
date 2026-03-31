@@ -3,64 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>LeetMetric — Track Your LeetCode Progress</title>
+    <meta name="description" content="Visualize your LeetCode problem-solving statistics with beautiful progress rings and detailed metrics.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- heading
-        user container
-        stats -->
+    <!-- Animated background blobs -->
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+    <div class="bg-blob blob-3"></div>
 
-        <h1>LeetMetric</h1>
-
-        <div class="user-container">
-            <p>Enter your Username below : </p>
-            <div class="user-input-container">
-                <input type="text" placeholder="enter your username here" id="user-input">
-                <button id="search-btn">Search</button>
+    <div class="container" id="main-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#grad1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="url(#grad2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="url(#grad3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="grad1" x1="2" y1="2" x2="22" y2="12">
+                            <stop stop-color="#fbbf24"/>
+                            <stop offset="1" stop-color="#f59e0b"/>
+                        </linearGradient>
+                        <linearGradient id="grad2" x1="2" y1="17" x2="22" y2="22">
+                            <stop stop-color="#f59e0b"/>
+                            <stop offset="1" stop-color="#d97706"/>
+                        </linearGradient>
+                        <linearGradient id="grad3" x1="2" y1="12" x2="22" y2="17">
+                            <stop stop-color="#fbbf24"/>
+                            <stop offset="1" stop-color="#f59e0b"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>LeetMetric</h1>
             </div>
+            <p class="tagline">Visualize your LeetCode journey</p>
+        </header>
 
+        <!-- Search Section -->
+        <div class="search-section" id="search-section">
+            <div class="search-box">
+                <div class="search-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+                <input type="text" placeholder="Enter your LeetCode username..." id="user-input" autocomplete="off">
+                <button id="search-btn">
+                    <span class="btn-text">Search</span>
+                    <span class="btn-loader" id="btn-loader"></span>
+                </button>
+            </div>
+            <p class="search-hint" id="search-hint">Press Enter or click Search to look up stats</p>
         </div>
 
-        <div class="stats-container">
-            <div class="progress">
-                <div class="progress-item">
-                    <div class="easy-progress circle">
-                        <span id="easy-label"></span>
-                         <p>Easy</p>
-                    </div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-item">
-                        <div class="medium-progress circle">
-                            <span id="medium-label"></span>
-                            <p>Medium</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="progress-item">
-                     <div class="progress-item">
-                        <div class="hard-progress circle">
-                            <span id="hard-label"></span>
-                            <p>Hard</p>
-                        </div>
-                    </div>
-                </div>
+        <!-- Error/Loading States -->
+        <div class="status-message" id="status-message"></div>
 
+        <!-- Stats Section (hidden by default) -->
+        <div class="stats-container" id="stats-container">
+            <!-- Total Solved Summary -->
+            <div class="total-summary" id="total-summary">
+                <div class="total-ring-wrapper">
+                    <svg class="total-ring" viewBox="0 0 140 140">
+                        <circle class="ring-bg" cx="70" cy="70" r="60" />
+                        <circle class="ring-fill" id="total-ring-fill" cx="70" cy="70" r="60" />
+                    </svg>
+                    <div class="total-ring-text">
+                        <span class="total-solved-num" id="total-solved-num">0</span>
+                        <span class="total-solved-label">Solved</span>
+                    </div>
+                </div>
+                <div class="total-info">
+                    <h2 id="username-display">Username</h2>
+                    <p class="total-subtitle" id="total-subtitle">0 / 0 problems solved</p>
+                    <div class="acceptance-badge" id="acceptance-badge">
+                        <span class="badge-dot"></span>
+                        <span id="acceptance-text">0% acceptance</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="stats-cards">
-                <!-- directly populate card from javascript code -->
+            <!-- Difficulty Progress -->
+            <div class="difficulty-section">
+                <div class="difficulty-card easy" id="easy-card">
+                    <div class="diff-header">
+                        <span class="diff-dot easy-dot"></span>
+                        <span class="diff-title">Easy</span>
+                    </div>
+                    <div class="diff-progress-bar">
+                        <div class="diff-bar-bg">
+                            <div class="diff-bar-fill easy-fill" id="easy-bar"></div>
+                        </div>
+                    </div>
+                    <div class="diff-stats">
+                        <span class="diff-count" id="easy-count">0 / 0</span>
+                        <span class="diff-percent" id="easy-percent">0%</span>
+                    </div>
+                </div>
 
+                <div class="difficulty-card medium" id="medium-card">
+                    <div class="diff-header">
+                        <span class="diff-dot medium-dot"></span>
+                        <span class="diff-title">Medium</span>
+                    </div>
+                    <div class="diff-progress-bar">
+                        <div class="diff-bar-bg">
+                            <div class="diff-bar-fill medium-fill" id="medium-bar"></div>
+                        </div>
+                    </div>
+                    <div class="diff-stats">
+                        <span class="diff-count" id="medium-count">0 / 0</span>
+                        <span class="diff-percent" id="medium-percent">0%</span>
+                    </div>
+                </div>
+
+                <div class="difficulty-card hard" id="hard-card">
+                    <div class="diff-header">
+                        <span class="diff-dot hard-dot"></span>
+                        <span class="diff-title">Hard</span>
+                    </div>
+                    <div class="diff-progress-bar">
+                        <div class="diff-bar-bg">
+                            <div class="diff-bar-fill hard-fill" id="hard-bar"></div>
+                        </div>
+                    </div>
+                    <div class="diff-stats">
+                        <span class="diff-count" id="hard-count">0 / 0</span>
+                        <span class="diff-percent" id="hard-percent">0%</span>
+                    </div>
+                </div>
             </div>
 
+            <!-- Stats Cards -->
+            <div class="stats-cards" id="stats-cards"></div>
         </div>
     </div>
 
-
-
-
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Powered by <a href="https://github.com/alfaarghya/alfa-leetcode-api" target="_blank" rel="noopener">alfa-leetcode-api</a></p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
