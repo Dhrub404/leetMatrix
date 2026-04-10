@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const statsContainer = document.getElementById("stats-container");
   const statusMessage = document.getElementById("status-message");
   const searchHint = document.getElementById("search-hint");
+  const lastUpdated = document.getElementById("last-updated");
 
   // Total summary
   const totalRingFill = document.getElementById("total-ring-fill");
@@ -41,12 +42,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const LEETCODE_GRAPHQL = "https://leetcode.com/graphql";
   const ALFA_API_BASE = "https://alfa-leetcode-api.onrender.com";
+  const VERCEL_API = "/api/stats";
 
   // Multiple CORS proxies for redundancy
   const CORS_PROXIES = [
     "https://corsproxy.io/?url=",
     "https://api.allorigins.win/raw?url=",
   ];
+
+  // Caching configuration
+  const CACHE_KEY_PREFIX = "leetmetric_cache_";
+  const CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes
 
   // ============================================
   // Validation
@@ -92,7 +98,52 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // ============================================
-  // Method 1: LeetCode GraphQL via CORS proxy
+  // Caching Helpers
+  // ============================================
+  function getFromCache(username) {
+    const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${username.toLowerCase()}`);
+    if (!cached) return null;
+
+    try {
+      const { data, timestamp } = JSON.parse(cached);
+      const isExpired = Date.now() - timestamp > CACHE_EXPIRY;
+      return { data, timestamp, isExpired };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveToCache(username, data) {
+    const cacheData = {
+      data,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(
+      `${CACHE_KEY_PREFIX}${username.toLowerCase()}`,
+      JSON.stringify(cacheData)
+    );
+  }
+
+  // ============================================
+  // Method 1: Vercel API (High speed, server-side)
+  // ============================================
+  async function fetchViaVercelAPI(username) {
+    try {
+      const response = await fetch(`${VERCEL_API}?username=${username}`);
+      if (response.ok) {
+        return await response.json();
+      }
+      if (response.status === 404) {
+        return { error: "not_found" };
+      }
+    } catch (e) {
+      console.warn("Vercel API failed (expected if running locally without vercel dev):", e.message);
+    }
+    return null;
+  }
+
+  // ============================================
+  // Method 2: LeetCode GraphQL via CORS proxy (Legacy Fallback)
   // ============================================
   async function fetchViaGraphQL(username) {
     const query = {
@@ -248,11 +299,26 @@ document.addEventListener("DOMContentLoaded", function () {
     hideStatus();
     statsContainer.classList.remove("visible");
 
-    try {
-      // Try GraphQL via CORS proxy first (most reliable)
-      let result = await fetchViaGraphQL(username);
+    // 0. Check Cache First
+    const cached = getFromCache(username);
+    if (cached && !cached.isExpired) {
+      console.log("Serving from fresh local cache...");
+      displayUserData(cached.data, cached.timestamp);
+      setLoading(false);
+      return;
+    }
 
-      // If all proxies failed, try alfa-leetcode-api
+    try {
+      // 1. Try Vercel API first (Best performance on production)
+      let result = await fetchViaVercelAPI(username);
+
+      // 2. Fallback: Try GraphQL via CORS proxy
+      if (!result) {
+        console.log("Vercel API unavailable, trying GraphQL via CORS proxy...");
+        result = await fetchViaGraphQL(username);
+      }
+
+      // 3. Last Resport: Try alfa-leetcode-api
       if (!result) {
         console.log("GraphQL proxies failed, trying alfa-leetcode-api...");
         result = await fetchViaAlfaAPI(username);
@@ -260,6 +326,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Handle errors
       if (!result) {
+        // If we have expired cache, at least show that
+        if (cached) {
+          showStatus("APIs are down, showing recently cached data", "info");
+          displayUserData(cached.data, cached.timestamp);
+          return;
+        }
+
         showStatus(
           "All API endpoints are currently unavailable. Please try again in a few minutes.",
           "error"
@@ -283,14 +356,20 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      // Success!
-      displayUserData(result);
+      // Success! Update Cache and Display
+      saveToCache(username, result);
+      displayUserData(result, result.timestamp || Date.now());
     } catch (error) {
       console.error("Error fetching user details:", error);
-      showStatus(
-        "Network error — check your connection and try again.",
-        "error"
-      );
+      if (cached) {
+        showStatus("Network error, showing cached data", "info");
+        displayUserData(cached.data, cached.timestamp);
+      } else {
+        showStatus(
+          "Network error — check your connection and try again.",
+          "error"
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -299,7 +378,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // ============================================
   // Display Data
   // ============================================
-  function displayUserData(data) {
+  function displayUserData(data, timestamp) {
     const {
       username,
       totalSolved,
@@ -314,6 +393,12 @@ document.addEventListener("DOMContentLoaded", function () {
       reputation,
       acceptanceRate,
     } = data;
+
+    // Last updated text
+    if (timestamp && lastUpdated) {
+      const date = new Date(timestamp);
+      lastUpdated.textContent = `Last updated: ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
 
     // --- Update Total Summary ---
     usernameDisplay.textContent = username;
